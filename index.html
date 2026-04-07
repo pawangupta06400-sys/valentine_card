@@ -1,449 +1,432 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Will you be my Valentine?</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SmartWattIoT | Real-Time Energy Dashboard</title>
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --bg: #0b1220;
+      --card: #131c2f;
+      --soft: #1d2840;
+      --text: #e8eefc;
+      --muted: #9fb0d3;
+      --accent: #56a8ff;
+      --ok: #35c38f;
+      --warn: #ffb84d;
+    }
 
-        body {
-            font-family: 'Arial', sans-serif;
-            background: linear-gradient(135deg, #ffd1dc 0%, #ffb6c1 100%);
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            overflow: hidden;
-        }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, Segoe UI, Arial, sans-serif;
+      background: radial-gradient(circle at top left, #172746 0%, var(--bg) 60%);
+      color: var(--text);
+      min-height: 100vh;
+    }
 
-        .card {
-            background: white;
-            padding: 60px 80px;
-            border-radius: 30px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
-            text-align: center;
-            max-width: 500px;
-            position: relative;
-        }
+    .container {
+      width: min(1200px, 92vw);
+      margin: 28px auto 40px;
+    }
 
-        #question {
-            transition: all 0.3s ease;
-        }
+    h1 {
+      margin: 0 0 6px;
+      font-size: clamp(1.4rem, 2.8vw, 2rem);
+    }
 
-        .cat {
-            width: 140px;
-            height: 140px;
-            margin: 0 auto 30px;
-            position: relative;
-        }
+    .subtitle {
+      margin: 0 0 22px;
+      color: var(--muted);
+    }
 
-        .cat-face {
-            width: 140px;
-            height: 140px;
-            background: #f9a86e;
-            border-radius: 50%;
-            position: relative;
-            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
-        }
+    .panel {
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), transparent), var(--card);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 14px;
+      padding: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+      margin-bottom: 16px;
+    }
 
-        .cat-ear-left,
-        .cat-ear-right {
-            width: 0;
-            height: 0;
-            border-left: 20px solid transparent;
-            border-right: 20px solid transparent;
-            border-bottom: 30px solid #f9a86e;
-            position: absolute;
-            top: -15px;
-        }
+    .connection {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      align-items: end;
+    }
 
-        .cat-ear-left {
-            left: 15px;
-            transform: rotate(-25deg);
-        }
+    label {
+      display: block;
+      font-size: 0.82rem;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
 
-        .cat-ear-right {
-            right: 15px;
-            transform: rotate(25deg);
-        }
+    input {
+      width: 100%;
+      background: var(--soft);
+      color: var(--text);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px;
+      padding: 10px;
+    }
 
-        /* Inner ear pink part */
-        .cat-ear-left::after,
-        .cat-ear-right::after {
-            content: '';
-            position: absolute;
-            width: 0;
-            height: 0;
-            border-left: 10px solid transparent;
-            border-right: 10px solid transparent;
-            border-bottom: 15px solid #ffb8a0;
-            left: -10px;
-            top: 5px;
-        }
+    button {
+      background: var(--accent);
+      border: 0;
+      color: #051327;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-weight: 700;
+      cursor: pointer;
+    }
 
-        .cat-eyes {
-            display: flex;
-            justify-content: center;
-            gap: 35px;
-            margin-top: 50px;
-            position: relative;
-        }
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.9rem;
+    }
 
-        .eye {
-            width: 10px;
-            height: 10px;
-            background: #2c2c2c;
-            border-radius: 50%;
-        }
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #7f8ca8;
+    }
 
-        .cat-nose {
-            width: 12px;
-            height: 10px;
-            background: #ff9eb8;
-            border-radius: 0 0 50% 50%;
-            margin: 12px auto 0;
-            position: relative;
-        }
+    .dot.online { background: var(--ok); }
+    .dot.error { background: #ff5c7a; }
 
-        /* Add cute blush */
-        .blush-left,
-        .blush-right {
-            width: 20px;
-            height: 12px;
-            background: rgba(255, 182, 193, 0.4);
-            border-radius: 50%;
-            position: absolute;
-            top: 70px;
-        }
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+    }
 
-        .blush-left {
-            left: 15px;
-        }
+    .metric {
+      background: var(--soft);
+      border-radius: 12px;
+      padding: 14px;
+      border: 1px solid rgba(255,255,255,0.06);
+    }
 
-        .blush-right {
-            right: 15px;
-        }
+    .metric .k {
+      color: var(--muted);
+      font-size: 0.84rem;
+      margin-bottom: 8px;
+    }
 
-        .heart {
-            position: absolute;
-            top: -5px;
-            right: 10px;
-            font-size: 40px;
-            animation: heartbeat 1.5s infinite;
-            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
-        }
+    .metric .v {
+      font-size: 1.35rem;
+      font-weight: 700;
+    }
 
-        @keyframes heartbeat {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.1); }
-        }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 16px;
+    }
 
-        h1 {
-            font-size: 28px;
-            color: #333;
-            margin-bottom: 40px;
-            font-weight: 600;
-        }
+    @media (max-width: 900px) {
+      .grid-2 { grid-template-columns: 1fr; }
+    }
 
-        .buttons {
-            display: flex;
-            gap: 30px;
-            justify-content: center;
-            margin-bottom: 20px;
-            position: relative;
-            height: 60px;
-        }
+    .forecast-box {
+      background: var(--soft);
+      border-radius: 12px;
+      padding: 14px;
+      border: 1px solid rgba(255,255,255,0.06);
+      margin-bottom: 12px;
+    }
 
-        button {
-            padding: 15px 40px;
-            font-size: 18px;
-            border: none;
-            border-radius: 50px;
-            cursor: pointer;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-            font-family: inherit;
-        }
+    .forecast-title {
+      color: var(--muted);
+      font-size: 0.84rem;
+      margin-bottom: 8px;
+    }
 
-        #yesBtn {
-            background: linear-gradient(135deg, #ff1744 0%, #f50057 100%);
-            color: white;
-            position: relative;
-            overflow: hidden;
-        }
+    .forecast-value {
+      font-size: 1.2rem;
+      font-weight: 700;
+    }
 
-        #yesBtn::before {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 0;
-            height: 0;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.3);
-            transform: translate(-50%, -50%);
-            transition: width 0.6s, height 0.6s;
-        }
+    .advice {
+      border-left: 4px solid var(--warn);
+      padding: 10px 12px;
+      background: rgba(255,184,77,0.12);
+      border-radius: 8px;
+      color: #ffe4b8;
+      line-height: 1.4;
+      font-size: 0.95rem;
+    }
 
-        #yesBtn:hover::before {
-            width: 300px;
-            height: 300px;
-        }
+    .note {
+      color: var(--muted);
+      font-size: 0.8rem;
+      margin-top: 8px;
+    }
 
-        #yesBtn:hover {
-            background: linear-gradient(135deg, #d50000 0%, #c51162 100%);
-            transform: scale(1.1);
-            box-shadow: 0 6px 25px rgba(255, 23, 68, 0.4);
-        }
-
-        #yesBtn:active {
-            transform: scale(1.05);
-        }
-
-        #noBtn {
-            background: linear-gradient(135deg, #e0e0e0 0%, #bdbdbd 100%);
-            color: #666;
-            position: absolute;
-            transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-        }
-
-        #noBtn:hover {
-            background: linear-gradient(135deg, #d0d0d0 0%, #a0a0a0 100%);
-            transform: scale(0.95) rotate(5deg);
-        }
-
-        .message {
-            font-size: 14px;
-            color: #666;
-            margin-top: 10px;
-        }
-
-        .emoji {
-            margin-left: 5px;
-        }
-
-        /* Success message */
-        .success {
-            display: none;
-            animation: fadeIn 0.5s ease;
-            transition: all 0.3s ease;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: scale(0.8); }
-            to { opacity: 1; transform: scale(1); }
-        }
-
-        .success h2 {
-            color: #ff1744;
-            font-size: 36px;
-            margin-bottom: 10px;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
-        }
-
-        .success p {
-            color: #666;
-            font-size: 18px;
-            margin: 10px 0;
-        }
-
-        .hearts {
-            font-size: 40px;
-            margin: 10px 0;
-        }
-
-        .gif-container {
-            margin: 20px 0;
-            border-radius: 15px;
-            overflow: hidden;
-        }
-
-        /* Mobile responsive */
-        @media (max-width: 600px) {
-            .card {
-                padding: 40px 30px;
-                margin: 20px;
-            }
-
-            h1 {
-                font-size: 22px;
-            }
-
-            button {
-                padding: 12px 30px;
-                font-size: 16px;
-            }
-        }
-    </style>
+    canvas {
+      background: #0f1930;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.06);
+      padding: 6px;
+    }
+  </style>
 </head>
 <body>
-    <div class="card">
-        <div id="question">
-            <div class="cat">
-                <div class="cat-face">
-                    <div class="cat-ear-left"></div>
-                    <div class="cat-ear-right"></div>
-                    <div class="cat-eyes">
-                        <div class="eye"></div>
-                        <div class="eye"></div>
-                    </div>
-                    <div class="cat-nose"></div>
-                    <div class="blush-left"></div>
-                    <div class="blush-right"></div>
-                </div>
-                <div class="heart">❤️</div>
-            </div>
+  <main class="container">
+    <h1>SmartWattIoT Dashboard</h1>
+    <p class="subtitle">Real-time ESP32 energy telemetry over MQTT + lightweight AI-based energy forecasting.</p>
 
-            <h1>Will you be my Valentine?</h1>
+    <section class="panel connection">
+      <div>
+        <label for="broker">MQTT WebSocket Broker URL</label>
+        <input id="broker" value="wss://test.mosquitto.org:8081" />
+      </div>
+      <div>
+        <label for="topic">Topic</label>
+        <input id="topic" value="smartwattiot/esp32/telemetry" />
+      </div>
+      <div>
+        <label for="clientId">Client ID</label>
+        <input id="clientId" value="web-smartwatt-client" />
+      </div>
+      <button id="connectBtn">Connect</button>
+      <div class="status" id="statusText"><span class="dot" id="statusDot"></span>Disconnected</div>
+    </section>
 
-            <div class="buttons">
-                <button id="yesBtn">Yes</button>
-                <button id="noBtn">No</button>
-            </div>
+    <section class="panel metrics">
+      <article class="metric"><div class="k">Voltage</div><div class="v" id="voltage">-- V</div></article>
+      <article class="metric"><div class="k">Current</div><div class="v" id="current">-- A</div></article>
+      <article class="metric"><div class="k">Power</div><div class="v" id="power">-- W</div></article>
+      <article class="metric"><div class="k">Power Factor</div><div class="v" id="pf">--</div></article>
+      <article class="metric"><div class="k">Energy</div><div class="v" id="energy">-- kWh</div></article>
+    </section>
 
-            <div class="message">"No" seems a bit shy <span class="emoji">😈</span></div>
+    <section class="grid-2">
+      <div class="panel">
+        <h3>Live Power Trend</h3>
+        <canvas id="powerChart" height="120"></canvas>
+        <p class="note">Expected payload (JSON): {"voltage":230,"current":1.2,"power":250,"power_factor":0.91,"energy":12.44}</p>
+      </div>
+
+      <aside class="panel">
+        <h3>AI Forecast & Savings</h3>
+        <div class="forecast-box">
+          <div class="forecast-title">Predicted next reading (power)</div>
+          <div class="forecast-value" id="forecastPower">-- W</div>
         </div>
-
-        <div id="success" class="success">
-            <div class="hearts">💕💖💕</div>
-            <h2>YAY! 🎉</h2>
-            <div class="gif-container">
-                <img src="https://media.giphy.com/media/g9582DNuQppxC/giphy.gif" alt="Celebration" style="width: 280px; height: 280px; border-radius: 15px; margin: 20px 0; box-shadow: 0 5px 20px rgba(0,0,0,0.15);">
-            </div>
-            <p style="font-size: 20px; font-weight: 600;">I knew you'd say yes!</p>
-            <div class="hearts">💝💗💝</div>
+        <div class="forecast-box">
+          <div class="forecast-title">Projected 24h energy use</div>
+          <div class="forecast-value" id="forecastEnergy">-- kWh</div>
         </div>
-    </div>
+        <div class="advice" id="advice">
+          Connect to MQTT and receive at least 10 readings to generate personalized energy-saving suggestions.
+        </div>
+      </aside>
+    </section>
+  </main>
 
-    <script>
-        const noBtn = document.getElementById('noBtn');
-        const yesBtn = document.getElementById('yesBtn');
-        const question = document.getElementById('question');
-        const success = document.getElementById('success');
+  <script>
+    const statusDot = document.getElementById('statusDot');
+    const statusText = document.getElementById('statusText');
+    const connectBtn = document.getElementById('connectBtn');
+    const brokerInput = document.getElementById('broker');
+    const topicInput = document.getElementById('topic');
+    const clientIdInput = document.getElementById('clientId');
 
-        // Function to move the No button to a random position
-        function moveButton() {
-            const card = document.querySelector('.card');
-            const cardRect = card.getBoundingClientRect();
-            const btnRect = noBtn.getBoundingClientRect();
+    const fields = {
+      voltage: document.getElementById('voltage'),
+      current: document.getElementById('current'),
+      power: document.getElementById('power'),
+      pf: document.getElementById('pf'),
+      energy: document.getElementById('energy')
+    };
 
-            // Calculate maximum positions to keep button inside card
-            const maxX = cardRect.width - btnRect.width - 60; // More padding
-            const maxY = 150; // Limit vertical movement
+    const forecastPower = document.getElementById('forecastPower');
+    const forecastEnergy = document.getElementById('forecastEnergy');
+    const adviceEl = document.getElementById('advice');
 
-            // Generate random positions (avoid staying too close to original position)
-            let randomX, randomY;
-            do {
-                randomX = Math.random() * maxX;
-                randomY = (Math.random() * maxY) - 75;
-            } while (Math.abs(randomX - 220) < 50); // Avoid staying near original position
+    const timestamps = [];
+    const powerSeries = [];
+    const energySeries = [];
 
-            // Apply smooth transition
-            noBtn.style.transition = 'all 0.3s ease';
-            noBtn.style.left = randomX + 'px';
-            noBtn.style.top = randomY + 'px';
+    const powerChart = new Chart(document.getElementById('powerChart'), {
+      type: 'line',
+      data: {
+        labels: [],
+        datasets: [{
+          label: 'Power (W)',
+          data: [],
+          borderColor: '#56a8ff',
+          backgroundColor: 'rgba(86, 168, 255, 0.2)',
+          fill: true,
+          tension: 0.25,
+          pointRadius: 1.5
+        }]
+      },
+      options: {
+        animation: false,
+        plugins: { legend: { labels: { color: '#c9d6f4' } } },
+        scales: {
+          x: { ticks: { color: '#9fb0d3' } },
+          y: { ticks: { color: '#9fb0d3' } }
         }
+      }
+    });
 
-        // Move button on hover
-        noBtn.addEventListener('mouseenter', moveButton);
+    let client;
 
-        // Move button on touch (for mobile)
-        noBtn.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            moveButton();
+    function setStatus(kind, text) {
+      statusDot.classList.remove('online', 'error');
+      if (kind) statusDot.classList.add(kind);
+      statusText.lastChild.textContent = text;
+    }
+
+    function format(v, unit = '', digits = 2) {
+      if (!Number.isFinite(v)) return `-- ${unit}`.trim();
+      return `${v.toFixed(digits)} ${unit}`.trim();
+    }
+
+    function linearRegressionPredict(yValues) {
+      const n = yValues.length;
+      if (n < 3) return null;
+      let sumX = 0, sumY = 0, sumXY = 0, sumXX = 0;
+      for (let i = 0; i < n; i++) {
+        sumX += i;
+        sumY += yValues[i];
+        sumXY += i * yValues[i];
+        sumXX += i * i;
+      }
+      const denom = n * sumXX - sumX * sumX;
+      if (denom === 0) return null;
+      const slope = (n * sumXY - sumX * sumY) / denom;
+      const intercept = (sumY - slope * sumX) / n;
+      return slope * n + intercept;
+    }
+
+    function movingAverage(values, window = 5) {
+      if (values.length < window) return null;
+      const slice = values.slice(-window);
+      return slice.reduce((a, b) => a + b, 0) / slice.length;
+    }
+
+    function refreshForecast() {
+      const predictedPowerLR = linearRegressionPredict(powerSeries.slice(-30));
+      const predictedPowerMA = movingAverage(powerSeries, 5);
+
+      const candidates = [predictedPowerLR, predictedPowerMA].filter(Number.isFinite);
+      const predictedPower = candidates.length
+        ? candidates.reduce((a, b) => a + b, 0) / candidates.length
+        : null;
+
+      forecastPower.textContent = format(predictedPower, 'W', 1);
+
+      const recentEnergyGrowth = energySeries.length >= 2
+        ? energySeries[energySeries.length - 1] - energySeries[Math.max(0, energySeries.length - 7)]
+        : null;
+
+      const projected24h = Number.isFinite(recentEnergyGrowth)
+        ? Math.max(0, recentEnergyGrowth) * 4
+        : null;
+
+      forecastEnergy.textContent = format(projected24h, 'kWh', 2);
+
+      if (!Number.isFinite(predictedPower) || powerSeries.length < 10) {
+        adviceEl.textContent = 'Collecting more data... at least 10 samples are needed for reliable recommendations.';
+        return;
+      }
+
+      const avgPower = powerSeries.reduce((a, b) => a + b, 0) / powerSeries.length;
+      const latestPF = parseFloat(fields.pf.textContent);
+
+      if (predictedPower > avgPower * 1.2) {
+        adviceEl.textContent = 'Forecast indicates a demand spike. Shift heavy loads (e.g., pumps/heaters) to off-peak hours to reduce bill and peak stress.';
+      } else if (Number.isFinite(latestPF) && latestPF < 0.9) {
+        adviceEl.textContent = 'Power factor is consistently low. Consider capacitor compensation or checking inductive loads to reduce reactive losses.';
+      } else {
+        adviceEl.textContent = 'Usage trend is stable. Keep standby loads off and automate high-consumption devices with timers for further savings.';
+      }
+    }
+
+    function updateChart(powerValue) {
+      const now = new Date();
+      const label = now.toLocaleTimeString();
+      timestamps.push(label);
+      powerSeries.push(powerValue);
+
+      if (timestamps.length > 40) {
+        timestamps.shift();
+        powerSeries.shift();
+      }
+
+      powerChart.data.labels = timestamps;
+      powerChart.data.datasets[0].data = powerSeries;
+      powerChart.update();
+      refreshForecast();
+    }
+
+    function handlePayload(payload) {
+      let data;
+      try {
+        data = JSON.parse(payload.toString());
+      } catch {
+        return;
+      }
+
+      const voltage = Number(data.voltage);
+      const current = Number(data.current);
+      const powerFactor = Number(data.power_factor ?? data.powerFactor);
+      let power = Number(data.power);
+      const energy = Number(data.energy);
+
+      if (!Number.isFinite(power) && Number.isFinite(voltage) && Number.isFinite(current)) {
+        power = voltage * current * (Number.isFinite(powerFactor) ? powerFactor : 1);
+      }
+
+      fields.voltage.textContent = format(voltage, 'V', 1);
+      fields.current.textContent = format(current, 'A', 2);
+      fields.power.textContent = format(power, 'W', 1);
+      fields.pf.textContent = Number.isFinite(powerFactor) ? powerFactor.toFixed(2) : '--';
+      fields.energy.textContent = format(energy, 'kWh', 3);
+
+      if (Number.isFinite(energy)) {
+        energySeries.push(energy);
+        if (energySeries.length > 120) energySeries.shift();
+      }
+
+      if (Number.isFinite(power)) updateChart(power);
+    }
+
+    function connectMqtt() {
+      if (client) client.end(true);
+
+      const url = brokerInput.value.trim();
+      const topic = topicInput.value.trim();
+      const clientId = `${clientIdInput.value.trim()}-${Math.random().toString(16).slice(2, 8)}`;
+
+      setStatus('', 'Connecting...');
+      client = mqtt.connect(url, { clientId, reconnectPeriod: 2000 });
+
+      client.on('connect', () => {
+        setStatus('online', `Connected | Subscribed: ${topic}`);
+        client.subscribe(topic, (err) => {
+          if (err) setStatus('error', `Subscribe failed: ${err.message}`);
         });
+      });
 
-        // Also move on click attempt
-        noBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            moveButton();
-        });
+      client.on('message', (_, payload) => handlePayload(payload));
+      client.on('reconnect', () => setStatus('', 'Reconnecting...'));
+      client.on('error', (err) => setStatus('error', `Error: ${err.message}`));
+      client.on('offline', () => setStatus('', 'Offline'));
+    }
 
-        // Yes button action
-        yesBtn.addEventListener('click', () => {
-            // Add a click animation
-            yesBtn.style.transform = 'scale(0.95)';
-            
-            setTimeout(() => {
-                question.style.opacity = '0';
-                question.style.transform = 'scale(0.8)';
-                
-                setTimeout(() => {
-                    question.style.display = 'none';
-                    success.style.display = 'block';
-                    success.style.opacity = '0';
-                    success.style.transform = 'scale(0.8)';
-                    
-                    setTimeout(() => {
-                        success.style.opacity = '1';
-                        success.style.transform = 'scale(1)';
-                    }, 50);
-                    
-                    // Add confetti effect
-                    createConfetti();
-                    
-                    // Play celebration sound (optional - works if user has interacted with page)
-                    try {
-                        const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIGmi87OmfTRAMUKXh8LZjHAU7k9n0y3krBSh+zPLaizsKGGS57OihUBELTKXh8bllHgU2jdXzzn0vBSl+zPDajDkKF2O77OmiUhELSp3d8LxnIAU7kdTy0H4yBSt/y/HajzsLGGK37OqiUhELSp3d8L5oIgQ7kdTy0H4yBSt/y/HajzsLGGK37OqiUhELSp3d8L5oIgQ7kdTy0H4yBSt/y/HajzsLGGK37OqiUhELSp3d8L5oIgQ7kdTy0H4yBSt/y/HajzsLGGK37OqiUhEL');
-                        audio.play().catch(() => {}); // Ignore if autoplay blocked
-                    } catch (e) {}
-                }, 300);
-            }, 200);
-        });
-
-        // Simple confetti effect
-        function createConfetti() {
-            const colors = ['#ff1744', '#ff69b4', '#ffc0cb', '#ff1493'];
-            for (let i = 0; i < 50; i++) {
-                setTimeout(() => {
-                    const confetti = document.createElement('div');
-                    confetti.style.position = 'fixed';
-                    confetti.style.width = '10px';
-                    confetti.style.height = '10px';
-                    confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
-                    confetti.style.left = Math.random() * window.innerWidth + 'px';
-                    confetti.style.top = '-10px';
-                    confetti.style.borderRadius = '50%';
-                    confetti.style.pointerEvents = 'none';
-                    confetti.style.zIndex = '1000';
-                    document.body.appendChild(confetti);
-
-                    const duration = 3000 + Math.random() * 2000;
-                    const angle = Math.random() * Math.PI * 2;
-                    const velocity = 2 + Math.random() * 3;
-
-                    let posY = -10;
-                    let posX = parseFloat(confetti.style.left);
-                    const startTime = Date.now();
-
-                    function fall() {
-                        const elapsed = Date.now() - startTime;
-                        if (elapsed < duration) {
-                            posY += velocity;
-                            posX += Math.sin(angle) * 2;
-                            confetti.style.top = posY + 'px';
-                            confetti.style.left = posX + 'px';
-                            confetti.style.opacity = 1 - (elapsed / duration);
-                            requestAnimationFrame(fall);
-                        } else {
-                            confetti.remove();
-                        }
-                    }
-                    fall();
-                }, i * 30);
-            }
-        }
-
-        // Initialize button position
-        noBtn.style.position = 'absolute';
-        noBtn.style.left = '220px';
-        noBtn.style.top = '0px';
-    </script>
+    connectBtn.addEventListener('click', connectMqtt);
+  </script>
 </body>
 </html>
